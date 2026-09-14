@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+
+<!-- ===== ตัวแปรลิงก์ปลายทาง แก้ที่นี่จุดเดียวพอ ===== -->
+<script>
+  var TARGET_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
+
+  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม" (standalone) ให้เด้งเข้าลิงก์จริงทันที
+  // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่เด้ง แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
+  // เพื่อให้เบราว์เซอร์อ่านไอคอน/ชื่อ "กรุเอกสาร" จากหน้านี้ไปสร้างเป็นไอคอนได้ถูกต้อง
+  var isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone) {
+    location.replace(TARGET_URL);
+  }
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>กรุเอกสาร</title>
+<meta name="description" content="กรุเอกสาร — จัดเก็บ ค้นหา ใช้งานได้ทุกที่">
+
+<!-- ===== Favicon: เบราว์เซอร์เดสก์ท็อปทั่วไป ===== -->
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+
+<!-- ===== iOS / iPadOS / macOS Safari: ไอคอนตอนกด "เพิ่มไปยังหน้าจอโฮม" ===== -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="กรุเอกสาร">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- ===== Android Chrome / เบราว์เซอร์ที่รองรับ Web App Manifest ===== -->
+<link rel="manifest" href="site.webmanifest">
+<meta name="application-name" content="กรุเอกสาร">
+<meta name="theme-color" content="#5b3a29">
+<meta name="msapplication-TileColor" content="#5b3a29">
+<meta name="msapplication-TileImage" content="android-chrome-192x192.png">
+
+<!-- ===== พรีวิวเวลาแชร์ลิงก์ (LINE, Facebook, Messenger ฯลฯ) =====
+     ถ้าจะให้รูปตัวอย่างตอนแชร์ลิงก์ขึ้นถูกต้อง ให้แก้ og:url และ og:image
+     ด้านล่างนี้เป็น URL เต็มของเว็บไซต์จริงหลังอัปโหลดขึ้น GitHub Pages แล้ว
+     เช่น https://USERNAME.github.io/REPO/ -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="กรุเอกสาร">
+<meta property="og:title" content="กรุเอกสาร">
+<meta property="og:description" content="จัดเก็บ ค้นหา ใช้งานได้ทุกที่">
+<meta property="og:url" content="https://USERNAME.github.io/REPO/">
+<meta property="og:image" content="https://USERNAME.github.io/REPO/android-chrome-512x512.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="กรุเอกสาร">
+<meta name="twitter:description" content="จัดเก็บ ค้นหา ใช้งานได้ทุกที่">
+<meta name="twitter:image" content="https://USERNAME.github.io/REPO/android-chrome-512x512.png">
+
+<style>
+  :root{
+    --bg-light:#f3ead3;
+    --card-light:#fffdf7;
+    --text-light:#2c2013;
+    --muted-light:#6b5a44;
+    --accent-light:#5b3a29;
+    --accent2-light:#2f4a3c;
+
+    --bg-dark:#1c140d;
+    --card-dark:#2a1f15;
+    --text-dark:#f3ead3;
+    --muted-dark:#c9b696;
+    --accent-dark:#e0b98a;
+    --accent2-dark:#7fae95;
+
+    color-scheme: light dark;
+    --bg:var(--bg-light);
+    --card:var(--card-light);
+    --text:var(--text-light);
+    --muted:var(--muted-light);
+    --accent:var(--accent-light);
+    --accent2:var(--accent2-light);
+    --btn-text:#fffdf7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:var(--bg-dark);
+      --card:var(--card-dark);
+      --text:var(--text-dark);
+      --muted:var(--muted-dark);
+      --accent:var(--accent-dark);
+      --accent2:var(--accent2-dark);
+      --btn-text:#1c140d;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    padding-block:32px;
+    padding-inline:20px;
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Noto Sans Thai","TH Sarabun New",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  .card{
+    width:100%;
+    max-width:420px;
+    background:var(--card);
+    border-radius:24px;
+    padding:36px 28px 30px;
+    text-align:center;
+    box-shadow:0 12px 40px rgba(0,0,0,.18);
+  }
+  .icon{
+    width:120px;
+    height:120px;
+    border-radius:26px;
+    margin:0 auto 18px;
+    display:block;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+  }
+  h1{
+    margin:0 0 4px;
+    font-size:clamp(1.4rem,5vw,1.9rem);
+    font-weight:700;
+    color:var(--accent);
+    letter-spacing:.5px;
+  }
+  p.sub{
+    margin:0 0 20px;
+    color:var(--muted);
+    font-size:.9rem;
+  }
+  .steps{
+    text-align:left;
+    background:color-mix(in srgb, var(--accent) 8%, transparent);
+    border-radius:16px;
+    padding:16px 18px;
+    margin:0 0 18px;
+    font-size:.9rem;
+    line-height:1.7;
+  }
+  .steps b{ color:var(--accent); }
+  .steps .kbd{
+    display:inline-block;
+    padding:1px 8px;
+    border-radius:6px;
+    background:color-mix(in srgb, var(--accent) 16%, transparent);
+    font-weight:600;
+  }
+  .btn{
+    display:block;
+    width:100%;
+    padding:13px 16px;
+    border-radius:14px;
+    background:var(--accent);
+    color:var(--btn-text);
+    text-decoration:none;
+    font-weight:700;
+    font-size:.95rem;
+  }
+  .btn-secondary{
+    margin-top:10px;
+    background:transparent;
+    color:var(--muted);
+    font-weight:500;
+    font-size:.82rem;
+    text-decoration:underline;
+    padding:8px;
+  }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <img class="icon" src="android-chrome-192x192.png" alt="ไอคอนกรุเอกสาร" width="120" height="120">
+    <h1>กรุเอกสาร</h1>
+    <p class="sub">จัดเก็บ • ค้นหา • ใช้งานได้ทุกที่</p>
+
+    <div class="steps" id="steps-ios" hidden>
+      แตะปุ่ม <b>แชร์</b> <span class="kbd">⬆️</span> ด้านล่าง (หรือด้านบน) ของ Safari<br>
+      แล้วเลือก <b>"เพิ่มไปที่หน้าจอโฮม" (Add to Home Screen)</b><br>
+      จากนั้นเปิดแอปจากไอคอนบนหน้าจอโฮมได้เลย
+    </div>
+
+    <div class="steps" id="steps-android" hidden>
+      แตะเมนู <span class="kbd">⋮</span> มุมขวาบนของ Chrome<br>
+      แล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม" หรือ "ติดตั้งแอป"</b><br>
+      จากนั้นเปิดแอปจากไอคอนบนหน้าจอโฮมได้เลย
+    </div>
+
+    <div class="steps" id="steps-desktop" hidden>
+      บนเบราว์เซอร์เดสก์ท็อป กดไอคอน <b>ติดตั้ง</b> ที่แถบที่อยู่ (address bar)<br>
+      หรือเมนู <span class="kbd">⋮</span> → <b>"ติดตั้งแอป" (Install app)</b>
+    </div>
+
+    <a class="btn" id="enter-link" href="#">เข้าใช้งานตอนนี้เลย</a>
+    <a class="btn btn-secondary" id="how-link" href="#">วิธีปักหมุดไอคอนไว้หน้าจอโฮม</a>
+  </main>
+
+  <script>
+    document.getElementById('enter-link').href = TARGET_URL;
+
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
+    var isAndroid = /Android/.test(ua);
+
+    var stepsEl = isIOS
+      ? document.getElementById('steps-ios')
+      : isAndroid
+        ? document.getElementById('steps-android')
+        : document.getElementById('steps-desktop');
+
+    document.getElementById('how-link').addEventListener('click', function (e) {
+      e.preventDefault();
+      stepsEl.hidden = !stepsEl.hidden;
+    });
+  </script>
+</body>
+</html>
