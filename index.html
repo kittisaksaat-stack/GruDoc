@@ -7,13 +7,16 @@
 <script>
   var TARGET_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
 
-  // หน้านี้เป็น "หน้าแนะนำ/หน้าแชร์ลิงก์" อย่างเดียว ไม่เด้งไปไหนเอง
-  // และไม่ฝัง iframe เพราะโปรแกรมปลายทางต้องล็อกอิน Google
-  // ซึ่ง Google ห้ามฝังหน้าล็อกอินใน iframe (จะกลายเป็นเปิดสองหน้าต่าง)
-  //
-  // ถ้าต้องการไอคอนแอปไว้ที่ Dock / หน้าจอโฮม ให้ปักจากลิงก์โปรแกรมโดยตรง
-  // แล้วตั้งไอคอน/ชื่อในฝั่ง Google Apps Script ด้วย
-  // .setTitle('กรุเอกสาร') และ .setFaviconUrl('<URL ของ apple-touch-icon.png>')
+  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม" (standalone) ให้เด้งเข้าลิงก์จริงทันที
+  // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่เด้ง แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
+  // เพื่อให้เบราว์เซอร์อ่านไอคอน/ชื่อ "กรุเอกสาร" จากหน้านี้ไปสร้างเป็นไอคอนได้ถูกต้อง
+  var isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone) {
+    location.replace(TARGET_URL);
+  }
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

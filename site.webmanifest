@@ -4,7 +4,7 @@
   "description": "จัดเก็บ ค้นหา ใช้งานได้ทุกที่",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "browser",
+  "display": "standalone",
   "orientation": "portrait",
   "lang": "th",
   "theme_color": "#5b3a29",
