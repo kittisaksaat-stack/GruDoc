@@ -7,16 +7,22 @@
 <script>
   var TARGET_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
 
-  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม" (standalone) ให้เด้งเข้าลิงก์จริงทันที
-  // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่เด้ง แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
-  // เพื่อให้เบราว์เซอร์อ่านไอคอน/ชื่อ "กรุเอกสาร" จากหน้านี้ไปสร้างเป็นไอคอนได้ถูกต้อง
+  // ===== แก้ปัญหา "หน้าว่างค้างอีกหนึ่งหน้า" =====
+  // สาเหตุเดิม: ตอนเปิดจากไอคอน (โหมดแอป/standalone) แล้วสั่ง location.replace()
+  // ไปยังลิงก์ต่างโดเมน (script.google.com) ซึ่งอยู่นอก scope ของแอป
+  // Safari จะโยนลิงก์ไปเปิดที่เบราว์เซอร์ แล้วทิ้งหน้าต่างแอปค้างเป็นหน้าว่าง
+  //
+  // วิธีแก้: โหมดแอปจะไม่วิ่งออกนอกโดเมนอีก แต่ฝังโปรแกรมไว้ในหน้านี้เลย
+  // (ตรวจแล้วว่า Web App ปลายทางไม่ได้ตั้ง X-Frame-Options / frame-ancestors
+  //  จึงฝังข้ามโดเมนได้) ผลคือเหลือหน้าต่างเดียว ไม่มีหน้าว่างค้าง
+  //
+  // ส่วนการเปิดจากลิงก์แชร์ทั่วไป ยังโชว์หน้าชวนกด Add to Home Screen เหมือนเดิม
   var isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true;
-
-  if (isStandalone) {
-    location.replace(TARGET_URL);
-  }
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches ||
+    window.navigator.standalone === true ||
+    /(^|[?&])app=1(&|$)/.test(location.search);
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -174,6 +180,33 @@
     padding:8px;
   }
   [hidden]{ display:none !important; }
+
+  /* ===== โหมดแอป (เปิดจากไอคอน): ฝังโปรแกรมเต็มจอ ไม่วิ่งออกนอกโดเมน ===== */
+  body.app-mode{
+    padding:0;
+    display:block;
+    overflow:hidden;
+  }
+  #app-frame{
+    position:fixed;
+    top:env(safe-area-inset-top,0px);
+    right:env(safe-area-inset-right,0px);
+    bottom:env(safe-area-inset-bottom,0px);
+    left:env(safe-area-inset-left,0px);
+    width:auto;
+    height:auto;
+    border:0;
+    background:var(--bg);
+  }
+  /* ปุ่มสำรอง เผื่อโหลดโปรแกรมไม่ขึ้นภายในเวลาที่กำหนด */
+  #app-fallback{
+    position:fixed;
+    left:50%;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+    transform:translateX(-50%);
+    width:min(420px,calc(100% - 32px));
+    z-index:2;
+  }
 </style>
 </head>
 <body>
@@ -204,6 +237,36 @@
   </main>
 
   <script>
+    // ===== โหมดแอป: ฝังโปรแกรมลงในหน้านี้เลย (ไม่เปิดหน้าต่างใหม่) =====
+    if (isStandalone) {
+      var card = document.querySelector('.card');
+      if (card) card.hidden = true;
+      document.body.classList.add('app-mode');
+
+      var frame = document.createElement('iframe');
+      frame.id = 'app-frame';
+      frame.title = 'กรุเอกสาร';
+      frame.src = TARGET_URL;
+      frame.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen');
+      frame.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+      document.body.appendChild(frame);
+
+      // ถ้าโหลดไม่ขึ้นภายใน 12 วินาที ค่อยโชว์ปุ่มให้เปิดตรง ๆ เป็นทางสำรอง
+      var loaded = false;
+      frame.addEventListener('load', function () { loaded = true; });
+      setTimeout(function () {
+        if (loaded) return;
+        var fallback = document.createElement('a');
+        fallback.id = 'app-fallback';
+        fallback.className = 'btn';
+        fallback.href = TARGET_URL;
+        fallback.target = '_blank';
+        fallback.rel = 'noopener';
+        fallback.textContent = 'เปิดโปรแกรมในเบราว์เซอร์';
+        document.body.appendChild(fallback);
+      }, 12000);
+    }
+
     document.getElementById('enter-link').href = TARGET_URL;
 
     var ua = navigator.userAgent || '';
