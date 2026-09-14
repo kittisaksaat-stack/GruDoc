@@ -9,6 +9,7 @@
 |---|---|
 | `index.html` | หน้าเว็บหลัก มี meta tag ครบสำหรับ favicon/ไอคอนทุกแพลตฟอร์ม ทำงานแบบ "หน้าชวนติดตั้งไอคอน" (ดูหัวข้อด้านล่าง) |
 | `site.webmanifest` | Web App Manifest สำหรับ Android/Chrome |
+| `sw.js` | Service Worker — **จำเป็น** ต่อการที่ Chrome/Edge จะยอมให้ "ติดตั้งแอป" และทำให้หน้านี้เปิดได้แม้ออฟไลน์ |
 | `favicon.ico` | ไอคอนแท็บเบราว์เซอร์ (รองรับเบราว์เซอร์เก่า) |
 | `favicon-16x16.png`, `favicon-32x32.png`, `favicon-48x48.png` | ไอคอนแท็บเบราว์เซอร์ขนาดต่าง ๆ |
 | `apple-touch-icon.png` | ไอคอนตอนกด Add to Home Screen บน iOS/iPadOS/macOS Safari |
@@ -44,3 +45,21 @@ var TARGET_URL = "https://script.google.com/macros/s/.../exec";
 
 - ไม่ต้องเปลี่ยนชื่อไฟล์ไอคอนใด ๆ เพราะ `index.html` และ `site.webmanifest` อ้างอิงชื่อไฟล์เหล่านี้ตรง ๆ
 - ถ้าต้องการเปลี่ยนสีธีม (theme color) แก้ค่าที่ `theme-color` ใน `index.html` และ `theme_color`/`background_color` ใน `site.webmanifest`
+
+## ถ้า Chrome ไม่ขึ้นปุ่ม "ติดตั้งแอป"
+
+ไล่ตรวจตามลำดับนี้:
+
+1. **ต้องเปิดผ่าน `https://` หรือ `http://localhost` เท่านั้น** — เปิดไฟล์ตรง ๆ แบบ `file:///.../index.html` จะไม่มีทางขึ้น เพราะ Service Worker ไม่ทำงานบน `file://`
+   ทดสอบเครื่องตัวเองได้ด้วย:
+   ```bash
+   cd โฟลเดอร์นี้ && python3 -m http.server 8000
+   # แล้วเปิด http://localhost:8000
+   ```
+2. **ติดตั้งไปแล้ว** — ถ้าเคยติดตั้ง ปุ่มจะหายไปเอง ตรวจที่ `chrome://apps` แล้วลบออกก่อนทดสอบใหม่
+3. **แคชเก่าค้าง** — เปิด DevTools (F12) → แท็บ **Application** → **Service Workers** → ติ๊ก *Update on reload* แล้วกด Ctrl/Cmd+Shift+R
+4. **ตรวจเกณฑ์ตรง ๆ** — DevTools → **Application** → **Manifest** จะมีหัวข้อ *Installability* บอกชัดว่าขาดอะไร
+5. **อัปโหลดไฟล์ครบหรือยัง** — `sw.js` ต้องอยู่ root เดียวกับ `index.html` และเปิด `https://.../sw.js` ต้องเห็นโค้ด ไม่ใช่ 404
+6. **Chrome บนมือถือ iOS ไม่รองรับ** — บน iPhone/iPad ต้องใช้ Safari แล้วกด แชร์ → เพิ่มไปยังหน้าจอโฮม เท่านั้น
+
+> หมายเหตุ: ทุกครั้งที่แก้ไฟล์ในรายการ `PRECACHE` ให้ขึ้นเลข `CACHE_VERSION` ใน `sw.js` (เช่น `v1` → `v2`) เพื่อบังคับให้ผู้ใช้เดิมได้ไฟล์ใหม่

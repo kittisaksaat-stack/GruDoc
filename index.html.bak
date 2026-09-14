@@ -173,14 +173,6 @@
     text-decoration:underline;
     padding:8px;
   }
-  .btn-install{
-    border:none;
-    cursor:pointer;
-    margin-bottom:10px;
-    background:var(--accent2);
-    font-family:inherit;
-  }
-  .btn-install:hover{ filter:brightness(1.08); }
   [hidden]{ display:none !important; }
 </style>
 </head>
@@ -207,10 +199,6 @@
       หรือเมนู <span class="kbd">⋮</span> → <b>"ติดตั้งแอป" (Install app)</b>
     </div>
 
-    <button class="btn btn-install" id="install-btn" type="button" hidden>
-      ⬇️ ติดตั้งแอป
-    </button>
-
     <a class="btn" id="enter-link" href="#">เข้าใช้งานตอนนี้เลย</a>
     <a class="btn btn-secondary" id="how-link" href="#">วิธีปักหมุดไอคอนไว้หน้าจอโฮม</a>
   </main>
@@ -231,52 +219,6 @@
     document.getElementById('how-link').addEventListener('click', function (e) {
       e.preventDefault();
       stepsEl.hidden = !stepsEl.hidden;
-    });
-
-    /* ===== ลงทะเบียน Service Worker =====
-       จำเป็นต่อเกณฑ์ "ติดตั้งได้" ของ Chrome/Edge
-       ทำงานเฉพาะบน https:// หรือ http://localhost เท่านั้น (เปิดไฟล์ตรง ๆ แบบ file:// จะไม่ทำงาน) */
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js', { scope: './' })
-          .catch(function (err) {
-            console.warn('[PWA] ลงทะเบียน Service Worker ไม่สำเร็จ:', err);
-          });
-      });
-    } else {
-      console.warn('[PWA] เบราว์เซอร์นี้ไม่รองรับ Service Worker');
-    }
-
-    /* ===== ปุ่มติดตั้งแอป (Chrome / Edge / Android) ===== */
-    var installBtn = document.getElementById('install-btn');
-    var deferredPrompt = null;
-
-    window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();            // กันไม่ให้ Chrome เด้ง mini-infobar เอง
-      deferredPrompt = e;
-      installBtn.hidden = false;     // ติดตั้งได้แล้ว จึงค่อยโชว์ปุ่ม
-    });
-
-    installBtn.addEventListener('click', function () {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice
-        .then(function (choice) {
-          if (choice.outcome === 'accepted') {
-            installBtn.hidden = true;
-          }
-        })
-        .catch(function (err) {
-          console.warn('[PWA] เรียกหน้าต่างติดตั้งไม่สำเร็จ:', err);
-        })
-        .then(function () {
-          deferredPrompt = null;     // ใช้ได้ครั้งเดียวต่อหนึ่ง event
-        });
-    });
-
-    window.addEventListener('appinstalled', function () {
-      installBtn.hidden = true;
-      deferredPrompt = null;
     });
   </script>
 </body>
