@@ -7,17 +7,9 @@
 <script>
   var TARGET_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
 
-  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม/Dock" (standalone) ให้เด้งเข้าลิงก์จริงทันที
+  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม" (standalone) ให้เด้งเข้าลิงก์จริงทันที
   // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่เด้ง แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
   // เพื่อให้เบราว์เซอร์อ่านไอคอน/ชื่อ "กรุเอกสาร" จากหน้านี้ไปสร้างเป็นไอคอนได้ถูกต้อง
-  //
-  // หมายเหตุ: เคยลองเปลี่ยนมาฝังแอปจริงด้วย <iframe> แทนการเด้งเต็มหน้า เพื่อแก้ปัญหา
-  // "เปิดสองหน้าต่าง หน้าหนึ่งว่างเปล่า" ที่เจอบน macOS Safari (Add to Dock) — แต่ผลข้างเคียงคือ
-  // Safari บล็อก cookie ของ Google ในบริบท iframe (Intelligent Tracking Prevention) ทำให้ต้อง
-  // ล็อกอินใหม่ทุกครั้งแทนที่จะจำ session ไว้ ซึ่งช้ากว่าและกวนใจกว่าปัญหาหน้าต่างซ้อน
-  // จึงตัดสินใจกลับมาใช้การเด้งเต็มหน้าแบบเดิม (เร็ว + จำล็อกอินได้) โดยยอมรับว่าบน macOS
-  // "Add to Dock" อาจเจอหน้าต่างว่างค้างเป็นบางครั้ง (เป็นข้อจำกัดของ WebKit ไม่มีทางแก้ฝั่ง JS
-  // ล้วน ๆ โดยไม่แลกกับปัญหา login)
   var isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
