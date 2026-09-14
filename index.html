@@ -7,25 +7,23 @@
 <script>
   var TARGET_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
 
-  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม" (standalone) ให้แสดงแอปจริงแบบเต็มจอ
-  // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่สลับ แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
+  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม/Dock" (standalone) ให้เด้งเข้าลิงก์จริงทันที
+  // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่เด้ง แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
   // เพื่อให้เบราว์เซอร์อ่านไอคอน/ชื่อ "กรุเอกสาร" จากหน้านี้ไปสร้างเป็นไอคอนได้ถูกต้อง
   //
-  // หมายเหตุสำคัญ: เดิมโค้ดนี้ใช้ location.replace(TARGET_URL) เพื่อเด้งออกจากหน้านี้ทันที
-  // แต่บน iOS/iPadOS เมื่อแอปที่ปักไว้หน้าจอโฮม (standalone) พยายาม "เปลี่ยนหน้าทั้งหน้า"
-  // ไปยังคนละโดเมน (จาก GitHub Pages ไปยัง script.google.com) Safari จะตีความว่าเรากำลัง
-  // จะออกจากแอป แล้วเปิด Safari ทั่วไปเป็นหน้าต่างแยกให้แทน (หน้านี้ทำงานได้ปกติ) ส่วนหน้าต่าง
-  // แอปเดิมที่ปักไว้หน้าจอโฮมจะค้างเป็นหน้าว่างเปล่าอยู่เบื้องหลัง — เกิดเป็น "สองหน้า"
-  // ที่ผู้ใช้เจอ ทางแก้คือไม่เปลี่ยนโดเมนของหน้าต่างหลักเลย แต่ฝังแอปจริงไว้ใน <iframe>
-  // เต็มจอแทน ทำให้ยังอยู่โดเมนเดิม (GitHub Pages) ตลอด iOS จึงไม่ดีดออกไปเปิด Safari ซ้อน
+  // หมายเหตุ: เคยลองเปลี่ยนมาฝังแอปจริงด้วย <iframe> แทนการเด้งเต็มหน้า เพื่อแก้ปัญหา
+  // "เปิดสองหน้าต่าง หน้าหนึ่งว่างเปล่า" ที่เจอบน macOS Safari (Add to Dock) — แต่ผลข้างเคียงคือ
+  // Safari บล็อก cookie ของ Google ในบริบท iframe (Intelligent Tracking Prevention) ทำให้ต้อง
+  // ล็อกอินใหม่ทุกครั้งแทนที่จะจำ session ไว้ ซึ่งช้ากว่าและกวนใจกว่าปัญหาหน้าต่างซ้อน
+  // จึงตัดสินใจกลับมาใช้การเด้งเต็มหน้าแบบเดิม (เร็ว + จำล็อกอินได้) โดยยอมรับว่าบน macOS
+  // "Add to Dock" อาจเจอหน้าต่างว่างค้างเป็นบางครั้ง (เป็นข้อจำกัดของ WebKit ไม่มีทางแก้ฝั่ง JS
+  // ล้วน ๆ โดยไม่แลกกับปัญหา login)
   var isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
 
   if (isStandalone) {
-    // ใส่ class ให้ <html> ทันทีตั้งแต่ตอนนี้ (ก่อน body render) เพื่อไม่ให้เห็นหน้าชวนติดตั้ง
-    // กะพริบขึ้นมาก่อนสลับไปหน้าแอป
-    document.documentElement.classList.add('is-app');
+    location.replace(TARGET_URL);
   }
 </script>
 
@@ -184,39 +182,6 @@
     padding:8px;
   }
   [hidden]{ display:none !important; }
-
-  /* ===== โหมดแอป (standalone): ซ่อนหน้าชวนติดตั้ง แล้วโชว์ iframe เต็มจอแทน ===== */
-  html.is-app body{ padding:0; }
-  html.is-app .card{ display:none; }
-  #app-shell{ display:none; }
-  html.is-app #app-shell{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    position:fixed;
-    inset:0;
-    background:var(--bg);
-  }
-  #app-frame{
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    border:0;
-  }
-  #app-loading{
-    position:relative;
-    z-index:1;
-    color:var(--muted);
-    font-size:.9rem;
-    text-align:center;
-    padding:0 24px;
-  }
-  #app-fallback{
-    display:none;
-    margin-top:14px;
-  }
-  #app-fallback.show{ display:inline-block; }
 </style>
 </head>
 <body>
@@ -246,18 +211,8 @@
     <a class="btn btn-secondary" id="how-link" href="#">วิธีปักหมุดไอคอนไว้หน้าจอโฮม</a>
   </main>
 
-  <!-- โหมดแอป (standalone): ฝังแอปจริงในหน้าเดียวกันด้วย iframe แทนการเด้งข้ามโดเมน -->
-  <div id="app-shell">
-    <p id="app-loading">
-      กำลังโหลด...<br>
-      <a class="btn btn-secondary" id="app-fallback" href="#">เปิดไม่ขึ้น? กดที่นี่เพื่อเปิดในเบราว์เซอร์</a>
-    </p>
-    <iframe id="app-frame" title="กรุเอกสาร" hidden></iframe>
-  </div>
-
   <script>
     document.getElementById('enter-link').href = TARGET_URL;
-    document.getElementById('app-fallback').href = TARGET_URL;
 
     var ua = navigator.userAgent || '';
     var isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
@@ -273,29 +228,6 @@
       e.preventDefault();
       stepsEl.hidden = !stepsEl.hidden;
     });
-
-    // ===== โหมดแอป (standalone): โหลดแอปจริงใน iframe เต็มจอ =====
-    // (ดูคำอธิบายเหตุผลไว้ใน <script> ด้านบนสุดของไฟล์)
-    if (isStandalone) {
-      var frame = document.getElementById('app-frame');
-      var loading = document.getElementById('app-loading');
-      var fallback = document.getElementById('app-fallback');
-
-      frame.addEventListener('load', function () {
-        frame.hidden = false;
-        loading.hidden = true;
-      });
-
-      frame.src = TARGET_URL;
-
-      // ถ้าโหลดนานผิดปกติ (เช่น เน็ตหลุด/สคริปต์ปลายทางมีปัญหา) โชว์ปุ่มสำรอง
-      // ให้กดเปิดในเบราว์เซอร์เอง แทนที่จะรอค้างไปเรื่อย ๆ
-      setTimeout(function () {
-        if (frame.hidden) {
-          fallback.classList.add('show');
-        }
-      }, 8000);
-    }
   </script>
 </body>
 </html>
