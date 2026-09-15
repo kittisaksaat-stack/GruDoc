@@ -207,6 +207,48 @@
     margin-bottom:10px;
     background:var(--accent2);
   }
+  .install-modal{
+    position:fixed;
+    inset:0;
+    z-index:20;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(28,20,13,.46);
+    backdrop-filter:blur(8px);
+  }
+  .install-dialog{
+    width:100%;
+    max-width:380px;
+    background:var(--card);
+    color:var(--text);
+    border-radius:22px;
+    padding:28px 24px 24px;
+    text-align:center;
+    box-shadow:0 18px 54px rgba(0,0,0,.28);
+  }
+  .install-dialog .icon{
+    width:84px;
+    height:84px;
+    border-radius:20px;
+    margin-bottom:14px;
+  }
+  .install-dialog h2{
+    margin:0 0 8px;
+    color:var(--accent);
+    font-size:1.35rem;
+    line-height:1.35;
+  }
+  .install-dialog p{
+    margin:0 0 16px;
+    color:var(--muted);
+    font-size:.92rem;
+    line-height:1.65;
+  }
+  .install-dialog .btn + .btn{
+    margin-top:10px;
+  }
   [hidden]{ display:none !important; }
   @media (max-width:360px){
     body{ padding-inline:14px; }
@@ -243,6 +285,20 @@
     <button class="btn btn-secondary" id="retry-button" type="button" hidden>ลองอีกครั้ง</button>
   </main>
 
+  <div class="install-modal" id="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-modal-title" hidden>
+    <section class="install-dialog">
+      <img class="icon" src="android-chrome-192x192.png" alt="ไอคอนกรุเอกสาร" width="84" height="84">
+      <h2 id="install-modal-title">ติดตั้งแอปกรุเอกสาร</h2>
+      <p id="install-modal-message">
+        ยังไม่พบว่าเปิดจากแอปกรุเอกสาร<br>
+        แนะนำให้ติดตั้งไอคอนก่อนใช้งานบนเครื่องนี้
+      </p>
+      <button class="btn btn-install" id="modal-install-button" type="button">ติดตั้งแอปกรุเอกสาร</button>
+      <button class="btn" id="modal-open-button" type="button">เปิดระบบก่อน</button>
+      <button class="btn btn-secondary" id="modal-later-button" type="button">ไว้ภายหลัง</button>
+    </section>
+  </div>
+
   <script>
     var redirectTimer = null;
     var deferredInstallPrompt = null;
@@ -253,6 +309,10 @@
     var statusText = document.getElementById('status-text');
     var errorText = document.getElementById('error-text');
     var installPanel = document.getElementById('install-panel');
+    var installModal = document.getElementById('install-modal');
+    var modalInstallButton = document.getElementById('modal-install-button');
+    var modalOpenButton = document.getElementById('modal-open-button');
+    var modalLaterButton = document.getElementById('modal-later-button');
     var isInstallMode = new URLSearchParams(window.location.search).get('install') === '1';
 
     function getInstallFlag() {
@@ -271,16 +331,30 @@
       }
     }
 
-    function isAppInstalled() {
+    function isStandaloneMode() {
       return window.matchMedia('(display-mode: standalone)').matches ||
-        window.navigator.standalone === true ||
-        getInstallFlag();
+        window.navigator.standalone === true;
+    }
+
+    function isSafariBrowser() {
+      var ua = navigator.userAgent || '';
+      return /Safari/.test(ua) &&
+        !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/.test(ua);
+    }
+
+    function isSafariStandalone() {
+      return isSafariBrowser() && isStandaloneMode();
+    }
+
+    function isAppInstalled() {
+      return isStandaloneMode() || getInstallFlag();
     }
 
     function showLoading() {
       installPanel.hidden = true;
       installNotice.hidden = true;
       installButton.hidden = true;
+      installModal.hidden = true;
       statusText.hidden = false;
       errorText.hidden = true;
       retryButton.hidden = true;
@@ -293,21 +367,34 @@
       installPanel.hidden = true;
       installNotice.hidden = true;
       installButton.hidden = true;
+      installModal.hidden = true;
       retryButton.hidden = false;
       enterButton.disabled = false;
     }
 
-    function showInstallPrompt() {
+    function updateInstallButtons() {
+      var buttonText = deferredInstallPrompt
+        ? 'ติดตั้งแอปกรุเอกสาร'
+        : 'ดูวิธีติดตั้งแอป';
+
+      installButton.textContent = buttonText;
+      modalInstallButton.textContent = buttonText;
+    }
+
+    function showInstallPrompt(showPopup) {
       statusText.hidden = true;
       errorText.hidden = true;
       retryButton.hidden = true;
       installNotice.hidden = false;
       installPanel.hidden = false;
       installButton.hidden = false;
-      installButton.textContent = deferredInstallPrompt
-        ? 'ติดตั้งแอปกรุเอกสาร'
-        : 'ดูวิธีติดตั้งแอป';
+      updateInstallButtons();
       enterButton.disabled = false;
+
+      if (showPopup) {
+        installModal.hidden = false;
+        modalInstallButton.focus();
+      }
     }
 
     function redirectToGas() {
@@ -320,10 +407,25 @@
 
       try {
         window.location.replace(GAS_URL);
+        closeSafariGatewayIfLeftBehind();
       } catch (err) {
         console.error('ไม่สามารถเปลี่ยนหน้าไปยัง GAS ได้:', err);
         showError();
       }
+    }
+
+    function closeSafariGatewayIfLeftBehind() {
+      if (!isSafariStandalone()) return;
+
+      [700, 1600, 3000].forEach(function (delay) {
+        setTimeout(function () {
+          try {
+            window.close();
+          } catch (err) {
+            console.warn('Safari ไม่อนุญาตให้ปิดหน้าทางเข้าอัตโนมัติ:', err);
+          }
+        }, delay);
+      });
     }
 
     enterButton.addEventListener('click', function () {
@@ -345,16 +447,21 @@
       });
     }
 
-    installButton.addEventListener('click', function () {
+    function requestInstall() {
       if (!deferredInstallPrompt) {
-        showInstallPrompt();
+        showInstallPrompt(true);
         return;
       }
 
-      deferredInstallPrompt.prompt();
-      deferredInstallPrompt.userChoice
+      var installPrompt = deferredInstallPrompt;
+      var wasAccepted = false;
+      deferredInstallPrompt = null;
+
+      installPrompt.prompt();
+      installPrompt.userChoice
         .then(function (choice) {
           if (choice.outcome === 'accepted') {
+            wasAccepted = true;
             setInstallFlag();
           }
         })
@@ -362,9 +469,28 @@
           console.warn('ไม่สามารถเปิดหน้าติดตั้งแอปได้:', err);
         })
         .then(function () {
-          deferredInstallPrompt = null;
-          showInstallPrompt();
+          if (wasAccepted) {
+            redirectToGas();
+          } else {
+            showInstallPrompt(true);
+          }
         });
+    }
+
+    installButton.addEventListener('click', function () {
+      requestInstall();
+    });
+
+    modalInstallButton.addEventListener('click', function () {
+      requestInstall();
+    });
+
+    modalOpenButton.addEventListener('click', function () {
+      redirectToGas();
+    });
+
+    modalLaterButton.addEventListener('click', function () {
+      installModal.hidden = true;
     });
 
     window.addEventListener('beforeinstallprompt', function (event) {
@@ -372,7 +498,7 @@
       deferredInstallPrompt = event;
 
       if (isInstallMode || !isAppInstalled()) {
-        showInstallPrompt();
+        showInstallPrompt(true);
       }
     });
 
@@ -383,11 +509,11 @@
     });
 
     if (isInstallMode) {
-      showInstallPrompt();
+      showInstallPrompt(true);
     } else if (isAppInstalled()) {
       redirectTimer = setTimeout(redirectToGas, 500);
     } else {
-      showInstallPrompt();
+      showInstallPrompt(true);
     }
   </script>
 </body>
