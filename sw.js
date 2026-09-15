@@ -6,7 +6,7 @@
 'use strict';
 
 // ── ขึ้นเลขเวอร์ชันทุกครั้งที่แก้ไฟล์ในรายการ PRECACHE เพื่อบังคับให้ผู้ใช้ได้ของใหม่ ──
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `kru-ekasan-${CACHE_VERSION}`;
 
 // ไฟล์เปลือกแอป (app shell) ที่ต้องมีติดเครื่องไว้เสมอ
