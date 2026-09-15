@@ -5,18 +5,7 @@
 
 <!-- ===== ตัวแปรลิงก์ปลายทาง แก้ที่นี่จุดเดียวพอ ===== -->
 <script>
-  var TARGET_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
-
-  // ถ้าเปิดจาก "ไอคอนที่ปักไว้หน้าจอโฮม" (standalone) ให้เด้งเข้าลิงก์จริงทันที
-  // ถ้าเปิดจากเบราว์เซอร์ปกติ (แท็บ/ลิงก์ทั่วไป) จะไม่เด้ง แต่โชว์หน้าชวนกด Add to Home Screen ก่อน
-  // เพื่อให้เบราว์เซอร์อ่านไอคอน/ชื่อ "กรุเอกสาร" จากหน้านี้ไปสร้างเป็นไอคอนได้ถูกต้อง
-  var isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true;
-
-  if (isStandalone) {
-    location.replace(TARGET_URL);
-  }
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -106,6 +95,7 @@
     background:var(--bg);
     color:var(--text);
     font-family:"Noto Sans Thai","TH Sarabun New",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:hidden;
   }
   .card{
     width:100%;
@@ -136,22 +126,31 @@
     color:var(--muted);
     font-size:.9rem;
   }
-  .steps{
-    text-align:left;
-    background:color-mix(in srgb, var(--accent) 8%, transparent);
-    border-radius:16px;
-    padding:16px 18px;
-    margin:0 0 18px;
-    font-size:.9rem;
-    line-height:1.7;
+  .loading-text{
+    margin:0 0 8px;
+    font-weight:700;
+    color:var(--text);
+    font-size:1rem;
   }
-  .steps b{ color:var(--accent); }
-  .steps .kbd{
+  .status{
+    min-height:24px;
+    margin:0 0 20px;
+    color:var(--muted);
+    font-size:.9rem;
+  }
+  .status-dot{
     display:inline-block;
-    padding:1px 8px;
-    border-radius:6px;
-    background:color-mix(in srgb, var(--accent) 16%, transparent);
-    font-weight:600;
+    width:8px;
+    height:8px;
+    margin-right:7px;
+    border-radius:50%;
+    background:var(--accent2);
+    animation:pulse 1s ease-in-out infinite;
+    vertical-align:middle;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:.35; transform:scale(.85); }
+    50%{ opacity:1; transform:scale(1.15); }
   }
   .btn{
     display:block;
@@ -163,6 +162,9 @@
     text-decoration:none;
     font-weight:700;
     font-size:.95rem;
+    border:none;
+    cursor:pointer;
+    font-family:inherit;
   }
   .btn-secondary{
     margin-top:10px;
@@ -173,15 +175,18 @@
     text-decoration:underline;
     padding:8px;
   }
-  .btn-install{
-    border:none;
-    cursor:pointer;
-    margin-bottom:10px;
-    background:var(--accent2);
-    font-family:inherit;
+  .error{
+    margin:0 0 16px;
+    color:#b42318;
+    font-weight:700;
+    line-height:1.55;
   }
-  .btn-install:hover{ filter:brightness(1.08); }
   [hidden]{ display:none !important; }
+  @media (max-width:360px){
+    body{ padding-inline:14px; }
+    .card{ padding:30px 20px 26px; }
+    .icon{ width:96px; height:96px; border-radius:22px; }
+  }
 </style>
 </head>
 <body>
@@ -190,94 +195,74 @@
     <h1>กรุเอกสาร</h1>
     <p class="sub">จัดเก็บ • ค้นหา • ใช้งานได้ทุกที่</p>
 
-    <div class="steps" id="steps-ios" hidden>
-      แตะปุ่ม <b>แชร์</b> <span class="kbd">⬆️</span> ด้านล่าง (หรือด้านบน) ของ Safari<br>
-      แล้วเลือก <b>"เพิ่มไปที่หน้าจอโฮม" (Add to Home Screen)</b><br>
-      จากนั้นเปิดแอปจากไอคอนบนหน้าจอโฮมได้เลย
-    </div>
+    <p class="loading-text" id="loading-text">กำลังเข้าสู่ระบบ...</p>
+    <p class="status" id="status-text"><span class="status-dot"></span>กำลังเชื่อมต่อ</p>
+    <p class="error" id="error-text" hidden>
+      ไม่สามารถเชื่อมต่อระบบได้<br>
+      กรุณาลองใหม่อีกครั้ง
+    </p>
 
-    <div class="steps" id="steps-android" hidden>
-      แตะเมนู <span class="kbd">⋮</span> มุมขวาบนของ Chrome<br>
-      แล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม" หรือ "ติดตั้งแอป"</b><br>
-      จากนั้นเปิดแอปจากไอคอนบนหน้าจอโฮมได้เลย
-    </div>
-
-    <div class="steps" id="steps-desktop" hidden>
-      บนเบราว์เซอร์เดสก์ท็อป กดไอคอน <b>ติดตั้ง</b> ที่แถบที่อยู่ (address bar)<br>
-      หรือเมนู <span class="kbd">⋮</span> → <b>"ติดตั้งแอป" (Install app)</b>
-    </div>
-
-    <button class="btn btn-install" id="install-btn" type="button" hidden>
-      ⬇️ ติดตั้งแอป
-    </button>
-
-    <a class="btn" id="enter-link" href="#">เข้าใช้งานตอนนี้เลย</a>
-    <a class="btn btn-secondary" id="how-link" href="#">วิธีปักหมุดไอคอนไว้หน้าจอโฮม</a>
+    <button class="btn" id="enter-button" type="button">เปิดระบบกรุเอกสาร</button>
+    <button class="btn btn-secondary" id="retry-button" type="button" hidden>ลองอีกครั้ง</button>
   </main>
 
   <script>
-    document.getElementById('enter-link').href = TARGET_URL;
+    var redirectTimer = null;
+    var fallbackTimer = null;
+    var enterButton = document.getElementById('enter-button');
+    var retryButton = document.getElementById('retry-button');
+    var loadingText = document.getElementById('loading-text');
+    var statusText = document.getElementById('status-text');
+    var errorText = document.getElementById('error-text');
 
-    var ua = navigator.userAgent || '';
-    var isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
-    var isAndroid = /Android/.test(ua);
-
-    var stepsEl = isIOS
-      ? document.getElementById('steps-ios')
-      : isAndroid
-        ? document.getElementById('steps-android')
-        : document.getElementById('steps-desktop');
-
-    document.getElementById('how-link').addEventListener('click', function (e) {
-      e.preventDefault();
-      stepsEl.hidden = !stepsEl.hidden;
-    });
-
-    /* ===== ลงทะเบียน Service Worker =====
-       จำเป็นต่อเกณฑ์ "ติดตั้งได้" ของ Chrome/Edge
-       ทำงานเฉพาะบน https:// หรือ http://localhost เท่านั้น (เปิดไฟล์ตรง ๆ แบบ file:// จะไม่ทำงาน) */
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js', { scope: './' })
-          .catch(function (err) {
-            console.warn('[PWA] ลงทะเบียน Service Worker ไม่สำเร็จ:', err);
-          });
-      });
-    } else {
-      console.warn('[PWA] เบราว์เซอร์นี้ไม่รองรับ Service Worker');
+    function showLoading() {
+      loadingText.hidden = false;
+      statusText.hidden = false;
+      errorText.hidden = true;
+      retryButton.hidden = true;
+      enterButton.disabled = true;
     }
 
-    /* ===== ปุ่มติดตั้งแอป (Chrome / Edge / Android) ===== */
-    var installBtn = document.getElementById('install-btn');
-    var deferredPrompt = null;
+    function showError() {
+      loadingText.hidden = true;
+      statusText.hidden = true;
+      errorText.hidden = false;
+      retryButton.hidden = false;
+      enterButton.disabled = false;
+    }
 
-    window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();            // กันไม่ให้ Chrome เด้ง mini-infobar เอง
-      deferredPrompt = e;
-      installBtn.hidden = false;     // ติดตั้งได้แล้ว จึงค่อยโชว์ปุ่ม
+    function redirectToGas() {
+      showLoading();
+
+      if (!GAS_URL || GAS_URL.indexOf('https://script.google.com/macros/s/') !== 0) {
+        showError();
+        return;
+      }
+
+      clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(function () {
+        if (!document.hidden) showError();
+      }, 10000);
+
+      try {
+        window.location.replace(GAS_URL);
+      } catch (err) {
+        console.error('ไม่สามารถเปลี่ยนหน้าไปยัง GAS ได้:', err);
+        showError();
+      }
+    }
+
+    enterButton.addEventListener('click', function () {
+      clearTimeout(redirectTimer);
+      redirectToGas();
     });
 
-    installBtn.addEventListener('click', function () {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice
-        .then(function (choice) {
-          if (choice.outcome === 'accepted') {
-            installBtn.hidden = true;
-          }
-        })
-        .catch(function (err) {
-          console.warn('[PWA] เรียกหน้าต่างติดตั้งไม่สำเร็จ:', err);
-        })
-        .then(function () {
-          deferredPrompt = null;     // ใช้ได้ครั้งเดียวต่อหนึ่ง event
-        });
+    retryButton.addEventListener('click', function () {
+      clearTimeout(redirectTimer);
+      redirectToGas();
     });
 
-    window.addEventListener('appinstalled', function () {
-      installBtn.hidden = true;
-      deferredPrompt = null;
-    });
+    redirectTimer = setTimeout(redirectToGas, 500);
   </script>
 </body>
 </html>
