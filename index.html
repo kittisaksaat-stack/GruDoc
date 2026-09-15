@@ -126,12 +126,6 @@
     color:var(--muted);
     font-size:.9rem;
   }
-  .loading-text{
-    margin:0 0 8px;
-    font-weight:700;
-    color:var(--text);
-    font-size:1rem;
-  }
   .status{
     min-height:24px;
     margin:0 0 20px;
@@ -181,6 +175,12 @@
     font-weight:700;
     line-height:1.55;
   }
+  .notice{
+    margin:0 0 14px;
+    color:var(--text);
+    font-weight:700;
+    line-height:1.55;
+  }
   .install-panel{
     text-align:left;
     background:color-mix(in srgb, var(--accent) 8%, transparent);
@@ -203,6 +203,10 @@
   .install-panel p:last-child{
     margin-bottom:0;
   }
+  .btn-install{
+    margin-bottom:10px;
+    background:var(--accent2);
+  }
   [hidden]{ display:none !important; }
   @media (max-width:360px){
     body{ padding-inline:14px; }
@@ -217,8 +221,11 @@
     <h1>กรุเอกสาร</h1>
     <p class="sub">จัดเก็บ • ค้นหา • ใช้งานได้ทุกที่</p>
 
-    <p class="loading-text" id="loading-text">กำลังเข้าสู่ระบบ...</p>
     <p class="status" id="status-text"><span class="status-dot"></span>กำลังเชื่อมต่อ</p>
+    <p class="notice" id="install-notice" hidden>
+      ยังไม่พบว่าเปิดจากแอปกรุเอกสาร<br>
+      แนะนำให้ติดตั้งไอคอนก่อนใช้งาน
+    </p>
     <p class="error" id="error-text" hidden>
       ไม่สามารถเชื่อมต่อระบบได้<br>
       กรุณาลองใหม่อีกครั้ง
@@ -231,24 +238,50 @@
       <p><b>Android Chrome:</b> กดเมนูจุดสามจุด แล้วเลือก <b>Add to Home screen</b> หรือ <b>Install app</b></p>
     </div>
 
+    <button class="btn btn-install" id="install-button" type="button" hidden>ติดตั้งแอปกรุเอกสาร</button>
     <button class="btn" id="enter-button" type="button">เปิดระบบกรุเอกสาร</button>
     <button class="btn btn-secondary" id="retry-button" type="button" hidden>ลองอีกครั้ง</button>
   </main>
 
   <script>
     var redirectTimer = null;
-    var fallbackTimer = null;
+    var closeTimer = null;
+    var deferredInstallPrompt = null;
     var enterButton = document.getElementById('enter-button');
     var retryButton = document.getElementById('retry-button');
-    var loadingText = document.getElementById('loading-text');
+    var installButton = document.getElementById('install-button');
+    var installNotice = document.getElementById('install-notice');
     var statusText = document.getElementById('status-text');
     var errorText = document.getElementById('error-text');
     var installPanel = document.getElementById('install-panel');
     var isInstallMode = new URLSearchParams(window.location.search).get('install') === '1';
 
+    function getInstallFlag() {
+      try {
+        return window.localStorage.getItem('kruEkasanAppInstalled') === '1';
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function setInstallFlag() {
+      try {
+        window.localStorage.setItem('kruEkasanAppInstalled', '1');
+      } catch (err) {
+        console.warn('ไม่สามารถบันทึกสถานะติดตั้งแอปได้:', err);
+      }
+    }
+
+    function isAppInstalled() {
+      return window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true ||
+        getInstallFlag();
+    }
+
     function showLoading() {
       installPanel.hidden = true;
-      loadingText.hidden = false;
+      installNotice.hidden = true;
+      installButton.hidden = true;
       statusText.hidden = false;
       errorText.hidden = true;
       retryButton.hidden = true;
@@ -256,21 +289,37 @@
     }
 
     function showError() {
-      loadingText.hidden = true;
       statusText.hidden = true;
       errorText.hidden = false;
       installPanel.hidden = true;
+      installNotice.hidden = true;
+      installButton.hidden = true;
       retryButton.hidden = false;
       enterButton.disabled = false;
     }
 
-    function showInstallMode() {
-      loadingText.hidden = true;
+    function showInstallPrompt() {
       statusText.hidden = true;
       errorText.hidden = true;
       retryButton.hidden = true;
+      installNotice.hidden = false;
       installPanel.hidden = false;
+      installButton.hidden = false;
+      installButton.textContent = deferredInstallPrompt
+        ? 'ติดตั้งแอปกรุเอกสาร'
+        : 'ดูวิธีติดตั้งแอป';
       enterButton.disabled = false;
+    }
+
+    function scheduleGatewayClose() {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(function () {
+        try {
+          window.close();
+        } catch (err) {
+          console.warn('เบราว์เซอร์ไม่อนุญาตให้ปิดหน้า gateway อัตโนมัติ:', err);
+        }
+      }, 1500);
     }
 
     function redirectToGas() {
@@ -281,13 +330,9 @@
         return;
       }
 
-      clearTimeout(fallbackTimer);
-      fallbackTimer = setTimeout(function () {
-        if (!document.hidden) showError();
-      }, 10000);
-
       try {
         window.location.replace(GAS_URL);
+        scheduleGatewayClose();
       } catch (err) {
         console.error('ไม่สามารถเปลี่ยนหน้าไปยัง GAS ได้:', err);
         showError();
@@ -304,10 +349,58 @@
       redirectToGas();
     });
 
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js', { scope: './' })
+          .catch(function (err) {
+            console.warn('ลงทะเบียน Service Worker ไม่สำเร็จ:', err);
+          });
+      });
+    }
+
+    installButton.addEventListener('click', function () {
+      if (!deferredInstallPrompt) {
+        showInstallPrompt();
+        return;
+      }
+
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice
+        .then(function (choice) {
+          if (choice.outcome === 'accepted') {
+            setInstallFlag();
+          }
+        })
+        .catch(function (err) {
+          console.warn('ไม่สามารถเปิดหน้าติดตั้งแอปได้:', err);
+        })
+        .then(function () {
+          deferredInstallPrompt = null;
+          showInstallPrompt();
+        });
+    });
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+
+      if (isInstallMode || !isAppInstalled()) {
+        showInstallPrompt();
+      }
+    });
+
+    window.addEventListener('appinstalled', function () {
+      setInstallFlag();
+      deferredInstallPrompt = null;
+      redirectToGas();
+    });
+
     if (isInstallMode) {
-      showInstallMode();
-    } else {
+      showInstallPrompt();
+    } else if (isAppInstalled()) {
       redirectTimer = setTimeout(redirectToGas, 500);
+    } else {
+      showInstallPrompt();
     }
   </script>
 </body>
