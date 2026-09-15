@@ -29,7 +29,7 @@
 
 `index.html` เลยทำหน้าที่เป็น **ตัวกลาง** โดยเช็คว่ากำลังถูกเปิดจากไหน:
 
-- **เปิดจากไอคอนที่ปักไว้หน้าจอโฮมแล้ว** (standalone) → เด้งเข้าลิงก์ Google Apps Script ให้อัตโนมัติทันที ไม่โชว์อะไรเลย
+- **เปิดจากไอคอนที่ปักไว้หน้าจอโฮมแล้ว** → เปิดเบราว์เซอร์แล้วเด้งเข้าลิงก์ Google Apps Script ให้อัตโนมัติทันที ไม่โชว์อะไรเลย
 - **เปิดจากลิงก์/แท็บเบราว์เซอร์ปกติ** (ครั้งแรก) → **ไม่เด้งไปเอง** แต่โชว์หน้าไอคอน "กรุเอกสาร" พร้อมปุ่ม:
   - "เข้าใช้งานตอนนี้เลย" — ไปหน้าเว็บจริงได้ทันทีโดยไม่ต้องติดตั้ง
   - "วิธีปักหมุดไอคอนไว้หน้าจอโฮม" — โชว์ขั้นตอนตามอุปกรณ์ (iOS / Android / เดสก์ท็อป) ให้ผู้ใช้กด Add to Home Screen จากหน้านี้ ซึ่งจะได้ไอคอนและชื่อ "กรุเอกสาร" ไปโชว์ที่หน้าจอโฮมถูกต้อง
@@ -44,7 +44,8 @@ var GAS_URL = "https://script.google.com/macros/s/.../exec";
 ## หมายเหตุ
 
 - ไม่ต้องเปลี่ยนชื่อไฟล์ไอคอนใด ๆ เพราะ `index.html` และ `site.webmanifest` อ้างอิงชื่อไฟล์เหล่านี้ตรง ๆ
-- ถ้าต้องการเปลี่ยนสีธีม (theme color) แก้ค่าที่ `theme-color` ใน `index.html` และ `theme_color`/`background_color` ใน `site.webmanifest`
+- หน้านี้ **ไม่ประกาศ `theme-color`** และ manifest ตั้ง `display: "browser"` โดยตั้งใจ เพื่อให้ทุกเครื่อง (รวม iPhone/iPad) เปิดเป็นหน้าเว็บปกติ ไม่มีแถบสีทึบบน–ล่างจาก safe-area ของโหมดแอปเต็มจอ
+- ถ้าจะกลับไปใช้โหมดแอปเต็มจอ ต้องเพิ่ม `theme-color` + `apple-mobile-web-app-capable` กลับใน `index.html` และเปลี่ยน `display` เป็น `standalone` ใน `site.webmanifest`
 
 ## ถ้า Chrome ไม่ขึ้นปุ่ม "ติดตั้งแอป"
 
@@ -82,33 +83,63 @@ var GAS_URL = "https://script.google.com/macros/s/.../exec";
 | เดิม | ใหม่ |
 |---|---|
 | `window.close()` 3 รอบ | ตัดทิ้งทั้งหมด ใช้ event `pagehide` / `visibilitychange` ตรวจว่าออกจากหน้าไปจริงหรือยัง |
-| เด้งข้าม origin เสมอ | **เปิดจากแอปที่ติดตั้งแล้ว → ฝัง Apps Script ใน iframe ภายในแอป** เหลือไอคอนเดียวใน Dock |
+| เด้งข้าม origin เสมอ | ยังเด้งตรงไปหน้า Apps Script ทุกเครื่อง (เคยลองฝัง iframe ในโหมดแอป แต่ถอดออกแล้ว ดูหัวข้อถัดไป) |
 | ไม่มี fallback | มี watchdog 8 วินาที ถ้าเด้งไม่สำเร็จจะโชว์ปุ่ม "เปิดระบบกรุเอกสาร" ให้กดเอง (ลิงก์จริง ไม่โดน popup blocker) |
 | `try/catch` รอบ `location.replace` | ตรวจ URL ก่อน + ใช้ตัวจับเวลาเฝ้าแทน |
-| `black-translucent` ไม่มี safe-area | เปลี่ยนเป็น `default` และใส่ `env(safe-area-inset-*)` ให้ทั้ง body และกรอบ iframe |
+| แถบ safe-area สีทึบบน–ล่าง | ถอดโหมดแอปเต็มจอออก ใช้ `padding` ปกติแทน `env(safe-area-inset-*)` |
 | กดย้อนกลับแล้ววนเด้งซ้ำ | ดักที่ `pageshow` (bfcache) แล้วโชว์ปุ่มแทนการเด้งอัตโนมัติ |
 
-### ⚠️ สิ่งที่ต้องไปตั้งค่าฝั่ง Google Apps Script
-โหมดฝังจะทำงานได้ต่อเมื่อ Apps Script ยอมให้ฝังในเว็บอื่น ให้แก้ `doGet` เป็น:
+### เด้งตั้งแต่ใน `<head>` เพื่อไม่ให้เหลือหน้าทางเข้าค้างใน Safari (2026-09-15)
+
+**อาการ:** เปิดผ่าน Safari แล้วเห็นสองหน้า คือหน้าทางเข้า (ไอคอนกรุเอกสาร) กับหน้า GAS
+
+**สาเหตุ:** เดิมหน่วง `REDIRECT_DELAY_MS = 400` ก่อนเด้ง หน้าทางเข้าจึงถูกวาดและถูก Safari
+บันทึกเป็นหน้าหนึ่งในแท็บไปแล้ว ก่อนที่ `location.replace()` จะทำงาน
+
+**วิธีแก้:** ย้ายคำสั่งเด้งขึ้นไปไว้ใน `<head>` ให้ทำงานก่อน `<body>` ถูกวาด และตัดการหน่วงทิ้ง
 
 ```js
-function doGet() {
-  return HtmlService.createTemplateFromFile('index')
-    .evaluate()
-    .setTitle('กรุเอกสาร')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // ← บรรทัดสำคัญ
-}
+window.__kruRedirected = false;
+(function redirectEarly() {
+  if (window.location.search.indexOf('install=1') !== -1) return; // หน้าสอนปักไอคอน
+  window.__kruRedirected = true;
+  window.location.replace(GAS_URL);   // ไม่เพิ่มประวัติ = แทนที่หน้าเดิมในแท็บเดียวกัน
+})();
 ```
-แล้ว **Deploy ใหม่** (Manage deployments → แก้ไข → New version)
 
-ถ้าไม่ได้ตั้ง `ALLOWALL` หน้าทางเข้าจะตรวจจับเองภายใน ~12 วินาที แล้วสลับไปโหมดเปิดผ่านเบราว์เซอร์ให้อัตโนมัติ พร้อมจำค่าไว้ใน `localStorage` เพื่อไม่ให้รอซ้ำในครั้งถัดไป
+สคริปต์ท้ายหน้ายังทำงานต่อในฐานะ **ตัวเฝ้า** (`watchStayedOnPage()`): ถ้าครบ 8 วินาทีแล้วยัง
+ไม่ออกจากหน้านี้ แปลว่าเด้งไม่สำเร็จ จึงค่อยโชว์ปุ่ม "เปิดระบบกรุเอกสาร" ให้กดเอง
 
-### สวิตช์ปรับโหมด
-บรรทัดบนสุดของ `index.html`:
-```js
-var EMBED_IN_APP = true;  // false = ให้เด้งออกเบราว์เซอร์เสมอ (จะมี 2 ไอคอนเหมือนเดิม)
-```
+- อยากเปิดหน้าทางเข้าไว้ดูวิธีปักไอคอน ใช้ `?install=1` ต่อท้าย URL
+- กดย้อนกลับจากหน้า GAS จะไม่ย้อนกลับมาหน้าทางเข้า เพราะ `replace` ไม่ทิ้งรายการในประวัติ
+- `sw.js` ขึ้นเวอร์ชันแคชเป็น `v8` เพื่อบังคับให้เครื่องที่เคยเปิดได้ `index.html` ใหม่
+
+> **ข้อจำกัดของ iOS ที่แก้จากหน้าเว็บไม่ได้:** ไอคอนบนหน้าจอโฮมที่เปิดผ่าน Safari
+> จะ **เปิดแท็บใหม่ทุกครั้งที่กด** เป็นพฤติกรรมของ iOS เอง ไม่ใช่โค้ดหน้านี้
+> ถ้าไม่อยากให้แท็บสะสม ต้องกลับไปใช้โหมด `standalone` ซึ่งจะได้แถบ safe-area กลับมาด้วย
+
+### ถอดโหมดฝัง iframe ออก (2026-09-15)
+
+เดิมหน้านี้จะฝังหน้า Apps Script ไว้ใน `<iframe>` เมื่อเปิดจากไอคอนแบบ standalone เพื่อให้เหลือไอคอนเดียวใน Dock แต่ผลข้างเคียงคือ:
+
+- กรอบ iframe ต้องกัน safe-area ของ iPhone เอง จึงเกิด **แถบสีทึบบน–ล่าง** (สีน้ำตาลในโหมดมืด) คร่อมหน้าจอ
+- ต้องพึ่ง `XFrameOptionsMode.ALLOWALL` ฝั่ง Apps Script ซึ่งเปิดช่องให้เว็บอื่นฝังระบบได้ด้วย
+- หน้าตาบนมือถือ/แท็บเล็ตไม่เหมือนเปิดเว็บปกติ
+
+จึง**ถอดออกทั้งหมด** และให้เปิดหน้า Apps Script ตรง ๆ ในเบราว์เซอร์เหมือนเดิม:
+
+| ไฟล์ | สิ่งที่แก้ |
+|---|---|
+| `index.html` | ลบ `EMBED_IN_APP`, `<iframe>`, CSS `.frame-wrap` / `body.embedding`, ฟังก์ชัน `startEmbed/probeEmbed/markEmbedReady/failEmbed`, `isStandaloneMode()`, คีย์ `kruEkasanEmbedBlocked` |
+| `index.html` | ลบ `theme-color`, `apple-mobile-web-app-capable`, `mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `viewport-fit=cover` และ `env(safe-area-inset-*)` |
+| `site.webmanifest` | `display: standalone` → `browser`, ลบ `theme_color` / `background_color` / `orientation` |
+| `sw.js` | ขึ้นเวอร์ชันแคช `v6` → `v7` เพื่อบังคับให้เครื่องที่เคยเปิดได้ไฟล์ใหม่ |
+
+ผลลัพธ์: ไอคอนบนหน้าจอโฮมยังอยู่ แต่กดแล้วเปิดใน Safari/Chrome เป็นหน้าเว็บปกติเต็มจอ ไม่มีแถบสีคร่อม
+
+> **สำคัญ:** เครื่องที่เคย Add to Home Screen ไว้ก่อนการแก้ครั้งนี้ จะยังจำค่าเดิม (โหมดเต็มจอ) อยู่ ต้อง **ลบไอคอนเดิมแล้วเพิ่มใหม่** ครั้งเดียว จึงจะได้พฤติกรรมใหม่
+
+> ฝั่ง Apps Script ไม่ต้องตั้ง `setXFrameOptionsMode(ALLOWALL)` อีกต่อไป ถ้าเคยใส่ไว้แนะนำให้เอาออกเพื่อความปลอดภัย แล้ว Deploy เวอร์ชันใหม่
 
 ### วิธีทดสอบ
 ```bash
