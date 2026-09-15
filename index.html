@@ -245,7 +245,6 @@
 
   <script>
     var redirectTimer = null;
-    var closeTimer = null;
     var deferredInstallPrompt = null;
     var enterButton = document.getElementById('enter-button');
     var retryButton = document.getElementById('retry-button');
@@ -311,17 +310,6 @@
       enterButton.disabled = false;
     }
 
-    function scheduleGatewayClose() {
-      clearTimeout(closeTimer);
-      closeTimer = setTimeout(function () {
-        try {
-          window.close();
-        } catch (err) {
-          console.warn('เบราว์เซอร์ไม่อนุญาตให้ปิดหน้า gateway อัตโนมัติ:', err);
-        }
-      }, 1500);
-    }
-
     function redirectToGas() {
       showLoading();
 
@@ -332,7 +320,6 @@
 
       try {
         window.location.replace(GAS_URL);
-        scheduleGatewayClose();
       } catch (err) {
         console.error('ไม่สามารถเปลี่ยนหน้าไปยัง GAS ได้:', err);
         showError();
