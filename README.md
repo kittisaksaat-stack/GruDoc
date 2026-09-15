@@ -38,7 +38,7 @@
 
 ถ้าต้องการเปลี่ยนลิงก์ปลายทาง แก้ค่าตัวแปรเดียวในบรรทัดบนสุดของ `index.html`:
 ```js
-var TARGET_URL = "https://script.google.com/macros/s/.../exec";
+var GAS_URL = "https://script.google.com/macros/s/.../exec";
 ```
 
 ## หมายเหตุ
@@ -63,3 +63,61 @@ var TARGET_URL = "https://script.google.com/macros/s/.../exec";
 6. **Chrome บนมือถือ iOS ไม่รองรับ** — บน iPhone/iPad ต้องใช้ Safari แล้วกด แชร์ → เพิ่มไปยังหน้าจอโฮม เท่านั้น
 
 > หมายเหตุ: ทุกครั้งที่แก้ไฟล์ในรายการ `PRECACHE` ให้ขึ้นเลข `CACHE_VERSION` ใน `sw.js` (เช่น `v1` → `v2`) เพื่อบังคับให้ผู้ใช้เดิมได้ไฟล์ใหม่
+
+
+---
+
+## อัปเดต: แก้ปัญหา macOS ขึ้น 2 ไอคอน และสถานะโหลดหายไป
+
+### อาการเดิม
+1. เปิดแอปจาก Dock (Safari → Add to Dock) แล้วมีไอคอนโผล่ 2 ตัว — ไอคอนกรุเอกสาร กับไอคอนของ Google
+2. ข้อความ "กำลังโหลดข้อมูล" หายไปเฉย ๆ เหลือจอเปล่า
+
+### สาเหตุ
+- **Safari Web App บน macOS/iOS ไม่ยอมเปิด URL ข้าม origin ไว้ในแอปตัวเอง** พอสั่งเด้งไป `script.google.com` ระบบจะโยนออกไปเปิดอีกหน้าต่าง = ไอคอนที่สอง ส่วนแอปเดิมค้างที่หน้าโหลด
+- โค้ดเดิมใช้ `window.close()` ยิง 3 ครั้ง (700/1600/3000 ms) เพื่อกลบหน้าที่ค้าง แต่ Apps Script โหลดจริง 1–3 วินาที `window.close()` จึงทำงานตอนที่ยังอยู่หน้าเดิม ทำให้หน้าถูกปิด/จอเปล่าก่อนเด้งสำเร็จ
+- `window.location.replace()` **ไม่ throw** เมื่อถูกบล็อก `try/catch` ที่ครอบไว้จึงเป็นโค้ดตาย ไม่มีทางแสดง error ได้เลย
+
+### วิธีแก้ที่ใช้
+| เดิม | ใหม่ |
+|---|---|
+| `window.close()` 3 รอบ | ตัดทิ้งทั้งหมด ใช้ event `pagehide` / `visibilitychange` ตรวจว่าออกจากหน้าไปจริงหรือยัง |
+| เด้งข้าม origin เสมอ | **เปิดจากแอปที่ติดตั้งแล้ว → ฝัง Apps Script ใน iframe ภายในแอป** เหลือไอคอนเดียวใน Dock |
+| ไม่มี fallback | มี watchdog 8 วินาที ถ้าเด้งไม่สำเร็จจะโชว์ปุ่ม "เปิดระบบกรุเอกสาร" ให้กดเอง (ลิงก์จริง ไม่โดน popup blocker) |
+| `try/catch` รอบ `location.replace` | ตรวจ URL ก่อน + ใช้ตัวจับเวลาเฝ้าแทน |
+| `black-translucent` ไม่มี safe-area | เปลี่ยนเป็น `default` และใส่ `env(safe-area-inset-*)` ให้ทั้ง body และกรอบ iframe |
+| กดย้อนกลับแล้ววนเด้งซ้ำ | ดักที่ `pageshow` (bfcache) แล้วโชว์ปุ่มแทนการเด้งอัตโนมัติ |
+
+### ⚠️ สิ่งที่ต้องไปตั้งค่าฝั่ง Google Apps Script
+โหมดฝังจะทำงานได้ต่อเมื่อ Apps Script ยอมให้ฝังในเว็บอื่น ให้แก้ `doGet` เป็น:
+
+```js
+function doGet() {
+  return HtmlService.createTemplateFromFile('index')
+    .evaluate()
+    .setTitle('กรุเอกสาร')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // ← บรรทัดสำคัญ
+}
+```
+แล้ว **Deploy ใหม่** (Manage deployments → แก้ไข → New version)
+
+ถ้าไม่ได้ตั้ง `ALLOWALL` หน้าทางเข้าจะตรวจจับเองภายใน ~12 วินาที แล้วสลับไปโหมดเปิดผ่านเบราว์เซอร์ให้อัตโนมัติ พร้อมจำค่าไว้ใน `localStorage` เพื่อไม่ให้รอซ้ำในครั้งถัดไป
+
+### สวิตช์ปรับโหมด
+บรรทัดบนสุดของ `index.html`:
+```js
+var EMBED_IN_APP = true;  // false = ให้เด้งออกเบราว์เซอร์เสมอ (จะมี 2 ไอคอนเหมือนเดิม)
+```
+
+### วิธีทดสอบ
+```bash
+cd โฟลเดอร์นี้ && python3 -m http.server 8000
+```
+แต่ต้องทดสอบผ่าน **https จริง** (GitHub Pages) เท่านั้นถึงจะเห็นพฤติกรรม Add to Dock ครบ เพราะ `localhost` ไม่ได้จำลอง Safari Web App
+
+ทดสอบตามนี้:
+1. Safari (แท็บปกติ) → ต้องเด้งเข้าระบบในแท็บเดิม ไม่มีหน้าต่างใหม่
+2. Safari → File → Add to Dock → เปิดจาก Dock → ต้องเห็นระบบอยู่ในหน้าต่างแอป **ไอคอนเดียว**
+3. ปิดเน็ตแล้วเปิดจาก Dock → ต้องเห็นการ์ดกรุเอกสาร + ปุ่ม ไม่ใช่จอเปล่า
+4. iPhone Safari → แชร์ → Add to Home Screen → เปิดจากไอคอน → ระบบต้องอยู่ในแอป ไม่กระโดดออก Safari

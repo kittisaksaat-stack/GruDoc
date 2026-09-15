@@ -3,9 +3,16 @@
 <head>
 <meta charset="UTF-8">
 
-<!-- ===== ตัวแปรลิงก์ปลายทาง แก้ที่นี่จุดเดียวพอ ===== -->
+<!-- ===== ตั้งค่าที่ต้องแก้ มีแค่จุดนี้จุดเดียว ===== -->
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
+  /* ลิงก์ Google Apps Script ปลายทาง (ต้องลงท้ายด้วย /exec) */
+  var GAS_URL = "https://script.google.com/macros/s/AKfycbyE6cFqD_Ht7LuhlM7QaFd_6Y6wDSl36Z8nKUApmocCmuu_vQC1rTxL6tM9J6NZy5mz6Q/exec";
+
+  /* true  = เปิดจากแอปที่ติดตั้งแล้ว ให้ฝังระบบไว้ในแอป -> Dock/หน้าจอโฮม เหลือไอคอนเดียว
+     false = ให้เด้งออกไปเปิดในเบราว์เซอร์เสมอ (จะมีไอคอนเบราว์เซอร์เพิ่มมาอีกตัว)
+     หมายเหตุ: โหมดฝังต้องให้ฝั่ง Apps Script ตั้ง XFrameOptionsMode.ALLOWALL ด้วย
+     ถ้าฝังไม่ได้ หน้านี้จะตรวจจับเองและสลับไปโหมดเบราว์เซอร์ให้อัตโนมัติ */
+  var EMBED_IN_APP = true;
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -18,22 +25,23 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
 
-<!-- ===== iOS / iPadOS / macOS Safari: ไอคอนตอนกด "เพิ่มไปยังหน้าจอโฮม" ===== -->
+<!-- ===== iOS / iPadOS / macOS Safari ===== -->
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="กรุเอกสาร">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- ใช้ default ไม่ใช่ black-translucent เพราะเนื้อหาจะลอดใต้แถบสถานะและอ่านไม่ออก -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<!-- ===== Android Chrome / เบราว์เซอร์ที่รองรับ Web App Manifest ===== -->
+<!-- ===== Android Chrome / Web App Manifest ===== -->
 <link rel="manifest" href="site.webmanifest">
 <meta name="application-name" content="กรุเอกสาร">
 <meta name="theme-color" content="#5b3a29">
 <meta name="msapplication-TileColor" content="#5b3a29">
 <meta name="msapplication-TileImage" content="android-chrome-192x192.png">
 
-<!-- ===== พรีวิวเวลาแชร์ลิงก์ (LINE, Facebook, Messenger ฯลฯ) =====
-     ถ้าจะให้รูปตัวอย่างตอนแชร์ลิงก์ขึ้นถูกต้อง ให้แก้ og:url และ og:image
-     ด้านล่างนี้เป็น URL เต็มของเว็บไซต์จริงหลังอัปโหลดขึ้น GitHub Pages แล้ว
+<!-- ===== พรีวิวตอนแชร์ลิงก์ (LINE, Facebook, Messenger) =====
+     TODO: แก้ 3 บรรทัดล่างนี้เป็น URL จริงของ GitHub Pages หลังอัปโหลด
      เช่น https://USERNAME.github.io/REPO/ -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="กรุเอกสาร">
@@ -86,7 +94,8 @@
   html,body{height:100%;}
   body{
     margin:0;
-    padding-block:32px;
+    /* เผื่อพื้นที่แถบสถานะ/แถบล่างของ iPhone เสมอ */
+    padding-block:calc(32px + env(safe-area-inset-top,0px)) calc(32px + env(safe-area-inset-bottom,0px));
     padding-inline:20px;
     min-height:100dvh;
     display:flex;
@@ -97,7 +106,30 @@
     font-family:"Noto Sans Thai","TH Sarabun New",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     overflow-x:hidden;
   }
+  /* โหมดฝังระบบไว้ในแอป: ให้ iframe กินเต็มจอ */
+  body.embedding{ padding:0; display:block; background:var(--card); overflow:hidden; }
+  .frame-wrap{
+    position:fixed;
+    inset:0;
+    background:var(--card);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    opacity:0;
+    transition:opacity .25s ease;
+    pointer-events:none;
+    z-index:1;
+  }
+  .frame-wrap.ready{ opacity:1; pointer-events:auto; }
+  .frame-wrap iframe{
+    width:100%;
+    height:100%;
+    border:0;
+    display:block;
+    background:var(--card);
+  }
   .card{
+    position:relative;
+    z-index:2;
     width:100%;
     max-width:420px;
     background:var(--card);
@@ -105,6 +137,19 @@
     padding:36px 28px 30px;
     text-align:center;
     box-shadow:0 12px 40px rgba(0,0,0,.18);
+  }
+  /* ตอนฝังสำเร็จ การ์ดทางเข้าต้องหายไปทั้งก้อน */
+  body.embedding .card{
+    position:fixed;
+    inset:0;
+    max-width:none;
+    border-radius:0;
+    box-shadow:none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:32px 24px;
   }
   .icon{
     width:120px;
@@ -126,6 +171,7 @@
     color:var(--muted);
     font-size:.9rem;
   }
+  .block{ width:100%; max-width:420px; }
   .status{
     min-height:24px;
     margin:0 0 20px;
@@ -146,6 +192,9 @@
     0%,100%{ opacity:.35; transform:scale(.85); }
     50%{ opacity:1; transform:scale(1.15); }
   }
+  @media (prefers-reduced-motion: reduce){
+    .status-dot{ animation:none; opacity:.8; }
+  }
   .btn{
     display:block;
     width:100%;
@@ -159,9 +208,11 @@
     border:none;
     cursor:pointer;
     font-family:inherit;
+    text-align:center;
   }
+  .btn:focus-visible{ outline:3px solid var(--accent2); outline-offset:2px; }
+  .btn + .btn{ margin-top:10px; }
   .btn-secondary{
-    margin-top:10px;
     background:transparent;
     color:var(--muted);
     font-weight:500;
@@ -169,6 +220,7 @@
     text-decoration:underline;
     padding:8px;
   }
+  .btn-install{ background:var(--accent2); }
   .error{
     margin:0 0 16px;
     color:#b42318;
@@ -180,6 +232,12 @@
     color:var(--text);
     font-weight:700;
     line-height:1.55;
+  }
+  .hint{
+    margin:0 0 16px;
+    color:var(--muted);
+    font-size:.82rem;
+    line-height:1.6;
   }
   .install-panel{
     text-align:left;
@@ -197,16 +255,8 @@
     color:var(--text);
     font-weight:700;
   }
-  .install-panel p{
-    margin:0 0 8px;
-  }
-  .install-panel p:last-child{
-    margin-bottom:0;
-  }
-  .btn-install{
-    margin-bottom:10px;
-    background:var(--accent2);
-  }
+  .install-panel p{ margin:0 0 8px; }
+  .install-panel p:last-child{ margin-bottom:0; }
   [hidden]{ display:none !important; }
   @media (max-width:360px){
     body{ padding-inline:14px; }
@@ -216,169 +266,248 @@
 </style>
 </head>
 <body>
-  <main class="card">
+  <!-- กรอบแสดงระบบจริงภายในแอป (ใช้เฉพาะโหมดฝัง) -->
+  <div class="frame-wrap" id="frame-wrap" hidden>
+    <iframe id="app-frame" title="ระบบกรุเอกสาร"
+            allow="clipboard-read; clipboard-write; fullscreen"
+            referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+
+  <main class="card" id="gateway-card">
     <img class="icon" src="android-chrome-192x192.png" alt="ไอคอนกรุเอกสาร" width="120" height="120">
     <h1>กรุเอกสาร</h1>
     <p class="sub">จัดเก็บ • ค้นหา • ใช้งานได้ทุกที่</p>
 
-    <p class="status" id="status-text"><span class="status-dot"></span>กำลังเชื่อมต่อ</p>
-    <p class="notice" id="install-notice" hidden>
-      ยังไม่พบว่าเปิดจากแอปกรุเอกสาร<br>
-      แนะนำให้ติดตั้งไอคอนก่อนใช้งาน
-    </p>
-    <p class="error" id="error-text" hidden>
-      ไม่สามารถเชื่อมต่อระบบได้<br>
-      กรุณาลองใหม่อีกครั้ง
-    </p>
+    <div class="block">
+      <p class="status" id="status-text" role="status" aria-live="polite">
+        <span class="status-dot"></span>กำลังโหลดข้อมูล
+      </p>
 
-    <div class="install-panel" id="install-panel" hidden>
-      <p class="install-title">เพิ่มไอคอนกรุเอกสาร</p>
-      <p><b>Safari บน Mac:</b> ใช้เมนู <b>File</b> → <b>Add to Dock</b> หากมี หรือกดปุ่มแชร์แล้วเลือก <b>Add to Dock</b></p>
-      <p><b>iPhone / iPad:</b> กดปุ่มแชร์ แล้วเลือก <b>Add to Home Screen</b></p>
-      <p><b>Android Chrome:</b> กดเมนูจุดสามจุด แล้วเลือก <b>Add to Home screen</b> หรือ <b>Install app</b></p>
+      <p class="notice" id="install-notice" hidden>
+        ยังไม่พบว่าเปิดจากแอปกรุเอกสาร<br>
+        แนะนำให้ติดตั้งไอคอนก่อนใช้งาน
+      </p>
+
+      <p class="notice" id="manual-notice" hidden>
+        ระบบใช้เวลาโหลดนานกว่าปกติ<br>
+        กดปุ่มด้านล่างเพื่อเข้าใช้งาน
+      </p>
+
+      <p class="error" id="error-text" hidden>
+        ไม่สามารถเชื่อมต่อระบบได้<br>
+        กรุณาลองใหม่อีกครั้ง
+      </p>
+
+      <p class="hint" id="embed-hint" hidden>
+        ระบบปลายทางไม่อนุญาตให้แสดงภายในแอป
+        ครั้งนี้จะเปิดผ่านเบราว์เซอร์แทน
+      </p>
+
+      <div class="install-panel" id="install-panel" hidden>
+        <p class="install-title">เพิ่มไอคอนกรุเอกสาร</p>
+        <p><b>Safari บน Mac:</b> เมนู <b>File</b> → <b>Add to Dock</b></p>
+        <p><b>iPhone / iPad:</b> กดปุ่มแชร์ แล้วเลือก <b>Add to Home Screen</b></p>
+        <p><b>Android Chrome:</b> เมนูจุดสามจุด แล้วเลือก <b>Add to Home screen</b> หรือ <b>Install app</b></p>
+      </div>
+
+      <a class="btn" id="open-link" href="#" hidden>เปิดระบบกรุเอกสาร</a>
+      <button class="btn btn-install" id="install-button" type="button" hidden>ติดตั้งแอปกรุเอกสาร</button>
+      <button class="btn btn-secondary" id="retry-button" type="button" hidden>ลองอีกครั้ง</button>
     </div>
-
-    <button class="btn btn-install" id="install-button" type="button" hidden>ติดตั้งแอปกรุเอกสาร</button>
-    <button class="btn" id="enter-button" type="button">เปิดระบบกรุเอกสาร</button>
-    <button class="btn btn-secondary" id="retry-button" type="button" hidden>ลองอีกครั้ง</button>
   </main>
 
   <script>
-    var redirectTimer = null;
-    var deferredInstallPrompt = null;
-    var enterButton = document.getElementById('enter-button');
-    var retryButton = document.getElementById('retry-button');
-    var installButton = document.getElementById('install-button');
+  (function () {
+    'use strict';
+
+    /* ───────── ค่าคงที่ ───────── */
+    var GAS_PREFIX          = 'https://script.google.com/macros/s/';
+    var REDIRECT_DELAY_MS   = 400;   // หน่วงให้ผู้ใช้เห็นสถานะก่อนเด้ง
+    var REDIRECT_TIMEOUT_MS = 8000;  // เกินนี้ถือว่าเด้งอัตโนมัติไม่สำเร็จ
+    var EMBED_TIMEOUT_MS    = 12000; // เกินนี้ถือว่าฝัง iframe ไม่สำเร็จ
+    var EMBED_PROBE_MS      = 1200;  // เว้นระยะก่อนตรวจว่า iframe โหลดจริงไหม
+    var KEY_INSTALLED       = 'kruEkasanAppInstalled';
+    var KEY_EMBED_BLOCKED   = 'kruEkasanEmbedBlocked';
+
+    /* ───────── DOM ───────── */
+    var card          = document.getElementById('gateway-card');
+    var frameWrap     = document.getElementById('frame-wrap');
+    var appFrame      = document.getElementById('app-frame');
+    var statusText    = document.getElementById('status-text');
     var installNotice = document.getElementById('install-notice');
-    var statusText = document.getElementById('status-text');
-    var errorText = document.getElementById('error-text');
-    var installPanel = document.getElementById('install-panel');
+    var manualNotice  = document.getElementById('manual-notice');
+    var errorText     = document.getElementById('error-text');
+    var embedHint     = document.getElementById('embed-hint');
+    var installPanel  = document.getElementById('install-panel');
+    var openLink      = document.getElementById('open-link');
+    var installButton = document.getElementById('install-button');
+    var retryButton   = document.getElementById('retry-button');
+
+    /* ───────── สถานะภายใน ───────── */
+    var redirectTimer   = null;
+    var watchdogTimer   = null;
+    var embedProbeTimer = null;
+    var embedFailTimer  = null;
+    var hasLeftPage     = false;  // true เมื่อเบราว์เซอร์ออกจากหน้านี้จริง
+    var embedReady      = false;
+    var deferredInstallPrompt = null;
     var isInstallMode = new URLSearchParams(window.location.search).get('install') === '1';
 
-    function getInstallFlag() {
+    /* ───────── ยูทิลิตี้ ───────── */
+    function safeStorage(action, key, value) {
+      // localStorage โยน error ได้ในโหมดส่วนตัว/บล็อกคุกกี้ จึงต้องห่อ try ทุกครั้ง
       try {
-        return window.localStorage.getItem('kruEkasanAppInstalled') === '1';
+        if (action === 'get') return window.localStorage.getItem(key);
+        window.localStorage.setItem(key, value);
       } catch (err) {
-        return false;
+        console.warn('[กรุเอกสาร] ใช้ localStorage ไม่ได้:', err);
       }
+      return null;
     }
 
-    function setInstallFlag() {
-      try {
-        window.localStorage.setItem('kruEkasanAppInstalled', '1');
-      } catch (err) {
-        console.warn('ไม่สามารถบันทึกสถานะติดตั้งแอปได้:', err);
-      }
+    function isValidGasUrl() {
+      return typeof GAS_URL === 'string' && GAS_URL.indexOf(GAS_PREFIX) === 0;
     }
 
     function isStandaloneMode() {
       return window.matchMedia('(display-mode: standalone)').matches ||
-        window.navigator.standalone === true;
+             window.matchMedia('(display-mode: fullscreen)').matches ||
+             window.navigator.standalone === true;
     }
 
-    function isSafariBrowser() {
-      var ua = navigator.userAgent || '';
-      return /Safari/.test(ua) &&
-        !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/.test(ua);
+    function clearTimers() {
+      [redirectTimer, watchdogTimer, embedProbeTimer, embedFailTimer].forEach(clearTimeout);
+      redirectTimer = watchdogTimer = embedProbeTimer = embedFailTimer = null;
     }
 
-    function isSafariStandalone() {
-      return isSafariBrowser() && isStandaloneMode();
-    }
-
-    function isAppInstalled() {
-      return isStandaloneMode() || getInstallFlag();
+    /* ───────── การแสดงผล: ซ่อนทุกอย่างก่อน แล้วค่อยเปิดเฉพาะที่ต้องการ ───────── */
+    function hideAllPanels() {
+      [statusText, installNotice, manualNotice, errorText, embedHint,
+       installPanel, openLink, installButton, retryButton].forEach(function (el) {
+        el.hidden = true;
+      });
     }
 
     function showLoading() {
-      installPanel.hidden = true;
-      installNotice.hidden = true;
-      installButton.hidden = true;
+      hideAllPanels();
       statusText.hidden = false;
-      errorText.hidden = true;
-      retryButton.hidden = true;
-      enterButton.disabled = true;
+    }
+
+    function showManualOpen(hintText) {
+      clearTimers();
+      hideAllPanels();
+      if (hintText) {
+        embedHint.textContent = hintText;
+        embedHint.hidden = false;
+      }
+      manualNotice.hidden = false;
+      openLink.hidden = false;
+      retryButton.hidden = false;
     }
 
     function showError() {
-      statusText.hidden = true;
+      clearTimers();
+      hideAllPanels();
       errorText.hidden = false;
-      installPanel.hidden = true;
-      installNotice.hidden = true;
-      installButton.hidden = true;
       retryButton.hidden = false;
-      enterButton.disabled = false;
-    }
-
-    function updateInstallButtons() {
-      var buttonText = deferredInstallPrompt
-        ? 'ติดตั้งแอปกรุเอกสาร'
-        : 'ดูวิธีติดตั้งแอป';
-
-      installButton.textContent = buttonText;
     }
 
     function showInstallPrompt() {
-      statusText.hidden = true;
-      errorText.hidden = true;
-      retryButton.hidden = true;
+      clearTimers();
+      hideAllPanels();
       installNotice.hidden = false;
       installPanel.hidden = false;
       installButton.hidden = false;
-      updateInstallButtons();
-      enterButton.disabled = false;
+      installButton.textContent = deferredInstallPrompt ? 'ติดตั้งแอปกรุเอกสาร' : 'ดูวิธีติดตั้งแอป';
+      openLink.hidden = false;
+      openLink.textContent = 'เข้าใช้งานตอนนี้เลย';
     }
 
-    function redirectToGas() {
+    /* ───────── โหมด 1: ฝังระบบไว้ในแอป (แก้ปัญหาไอคอนซ้ำใน Dock) ───────── */
+    function startEmbed() {
+      document.body.classList.add('embedding');
+      frameWrap.hidden = false;
       showLoading();
 
-      if (!GAS_URL || GAS_URL.indexOf('https://script.google.com/macros/s/') !== 0) {
+      appFrame.addEventListener('load', function () {
+        clearTimeout(embedProbeTimer);
+        embedProbeTimer = setTimeout(probeEmbed, EMBED_PROBE_MS);
+      });
+
+      // กันเหนียว: ถ้าไม่มีสัญญาณอะไรเลยภายในเวลาที่กำหนด ให้ถอยไปโหมดเบราว์เซอร์
+      embedFailTimer = setTimeout(function () {
+        if (!embedReady) failEmbed();
+      }, EMBED_TIMEOUT_MS);
+
+      appFrame.src = GAS_URL;
+    }
+
+    function probeEmbed() {
+      // หน้า /exec ของ Apps Script จะมี iframe ซ้อนอยู่ข้างในเสมอ
+      // ถ้าถูกบล็อกด้วย X-Frame-Options จะไม่มี iframe ลูก (length === 0)
+      var childFrames = 0;
+      try {
+        childFrames = appFrame.contentWindow ? appFrame.contentWindow.length : 0;
+      } catch (err) {
+        childFrames = 1; // อ่านไม่ได้เพราะข้าม origin = โหลดสำเร็จ
+      }
+
+      if (childFrames > 0) {
+        markEmbedReady();
+      } else {
+        // ให้โอกาสอีกครั้งเผื่อยังโหลดไม่เสร็จ ก่อนตัดสินว่าถูกบล็อก
+        clearTimeout(embedProbeTimer);
+        embedProbeTimer = setTimeout(function () {
+          var retryFrames = 0;
+          try {
+            retryFrames = appFrame.contentWindow ? appFrame.contentWindow.length : 0;
+          } catch (err) {
+            retryFrames = 1;
+          }
+          if (retryFrames > 0) markEmbedReady();
+          else failEmbed();
+        }, 2500);
+      }
+    }
+
+    function markEmbedReady() {
+      embedReady = true;
+      clearTimers();
+      frameWrap.classList.add('ready');
+      card.hidden = true;
+      safeStorage('set', KEY_EMBED_BLOCKED, '0');
+    }
+
+    function failEmbed() {
+      clearTimers();
+      // จำไว้ว่าฝังไม่ได้ ครั้งหน้าจะได้ไม่ต้องรอซ้ำ
+      safeStorage('set', KEY_EMBED_BLOCKED, '1');
+      document.body.classList.remove('embedding');
+      frameWrap.classList.remove('ready');
+      frameWrap.hidden = true;
+      appFrame.src = 'about:blank';
+      card.hidden = false;
+      redirectToGas('ระบบปลายทางไม่อนุญาตให้แสดงภายในแอป ครั้งนี้จะเปิดผ่านเบราว์เซอร์แทน');
+    }
+
+    /* ───────── โหมด 2: เด้งไปเปิดตรง ๆ (แท็บเบราว์เซอร์ปกติ) ───────── */
+    function redirectToGas(hintText) {
+      if (!isValidGasUrl()) {
         showError();
         return;
       }
 
-      try {
-        window.location.replace(GAS_URL);
-        closeSafariGatewayIfLeftBehind();
-      } catch (err) {
-        console.error('ไม่สามารถเปลี่ยนหน้าไปยัง GAS ได้:', err);
-        showError();
-      }
+      showLoading();
+
+      // location.replace ไม่เคย throw แม้ถูกบล็อก จึงต้องใช้ตัวจับเวลาเฝ้าแทน try/catch
+      watchdogTimer = setTimeout(function () {
+        if (!hasLeftPage) showManualOpen(hintText);
+      }, REDIRECT_TIMEOUT_MS);
+
+      window.location.replace(GAS_URL);
     }
 
-    function closeSafariGatewayIfLeftBehind() {
-      if (!isSafariStandalone()) return;
-
-      [700, 1600, 3000].forEach(function (delay) {
-        setTimeout(function () {
-          try {
-            window.close();
-          } catch (err) {
-            console.warn('Safari ไม่อนุญาตให้ปิดหน้าทางเข้าอัตโนมัติ:', err);
-          }
-        }, delay);
-      });
-    }
-
-    enterButton.addEventListener('click', function () {
-      clearTimeout(redirectTimer);
-      redirectToGas();
-    });
-
-    retryButton.addEventListener('click', function () {
-      clearTimeout(redirectTimer);
-      redirectToGas();
-    });
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js', { scope: './' })
-          .catch(function (err) {
-            console.warn('ลงทะเบียน Service Worker ไม่สำเร็จ:', err);
-          });
-      });
-    }
-
+    /* ───────── ติดตั้งแอป (Chrome / Edge / Android) ───────── */
     function requestInstall() {
       if (!deferredInstallPrompt) {
         showInstallPrompt();
@@ -386,55 +515,108 @@
       }
 
       var installPrompt = deferredInstallPrompt;
-      var wasAccepted = false;
       deferredInstallPrompt = null;
 
       installPrompt.prompt();
       installPrompt.userChoice
         .then(function (choice) {
           if (choice.outcome === 'accepted') {
-            wasAccepted = true;
-            setInstallFlag();
-          }
-        })
-        .catch(function (err) {
-          console.warn('ไม่สามารถเปิดหน้าติดตั้งแอปได้:', err);
-        })
-        .then(function () {
-          if (wasAccepted) {
-            redirectToGas();
+            safeStorage('set', KEY_INSTALLED, '1');
+            start();
           } else {
             showInstallPrompt();
           }
+        })
+        .catch(function (err) {
+          console.warn('[กรุเอกสาร] เปิดหน้าติดตั้งแอปไม่สำเร็จ:', err);
+          showInstallPrompt();
         });
     }
 
-    installButton.addEventListener('click', function () {
-      requestInstall();
+    /* ───────── ตัวรับเหตุการณ์ ───────── */
+    openLink.addEventListener('click', function () {
+      // เป็นลิงก์จริง ปล่อยให้เบราว์เซอร์พาไปเอง (มี user gesture จึงไม่ถูกบล็อก)
+      clearTimers();
     });
+
+    retryButton.addEventListener('click', function () {
+      clearTimers();
+      hasLeftPage = false;
+      start();
+    });
+
+    installButton.addEventListener('click', requestInstall);
 
     window.addEventListener('beforeinstallprompt', function (event) {
       event.preventDefault();
       deferredInstallPrompt = event;
-
-      if (isInstallMode || !isAppInstalled()) {
-        showInstallPrompt();
-      }
+      if (isInstallMode) showInstallPrompt();
     });
 
     window.addEventListener('appinstalled', function () {
-      setInstallFlag();
+      safeStorage('set', KEY_INSTALLED, '1');
       deferredInstallPrompt = null;
-      redirectToGas();
+      start();
     });
 
-    if (isInstallMode) {
-      showInstallPrompt();
-    } else if (isAppInstalled()) {
-      redirectTimer = setTimeout(redirectToGas, 500);
-    } else {
-      showInstallPrompt();
+    // ใช้แทน window.close() เดิม: รู้ว่าออกจากหน้านี้จริงเมื่อไหร่ จะได้ไม่เคลียร์จอทิ้งเอง
+    window.addEventListener('pagehide', function () {
+      hasLeftPage = true;
+      clearTimers();
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') hasLeftPage = true;
+    });
+
+    // กดย้อนกลับมาจากหน้าปลายทาง: อย่าเด้งวนซ้ำ ให้ผู้ใช้กดเองแทน
+    window.addEventListener('pageshow', function (event) {
+      if (embedReady) return; // อยู่ในโหมดฝัง ไม่ต้องทำอะไร
+      if (event.persisted) {
+        hasLeftPage = false;
+        showManualOpen();
+      }
+    });
+
+    /* ───────── Service Worker ───────── */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js', { scope: './' })
+          .catch(function (err) {
+            console.warn('[กรุเอกสาร] ลงทะเบียน Service Worker ไม่สำเร็จ:', err);
+          });
+      });
     }
+
+    /* ───────── จุดเริ่มต้น ───────── */
+    function start() {
+      clearTimers();
+
+      if (!isValidGasUrl()) {
+        showError();
+        return;
+      }
+
+      openLink.href = GAS_URL;
+      openLink.textContent = 'เปิดระบบกรุเอกสาร';
+
+      if (isInstallMode) {
+        showInstallPrompt();
+        return;
+      }
+
+      var embedBlockedBefore = safeStorage('get', KEY_EMBED_BLOCKED) === '1';
+
+      if (EMBED_IN_APP && isStandaloneMode() && !embedBlockedBefore) {
+        startEmbed();
+        return;
+      }
+
+      redirectTimer = setTimeout(function () { redirectToGas(); }, REDIRECT_DELAY_MS);
+    }
+
+    start();
+  })();
   </script>
 </body>
 </html>
