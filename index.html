@@ -181,6 +181,28 @@
     font-weight:700;
     line-height:1.55;
   }
+  .install-panel{
+    text-align:left;
+    background:color-mix(in srgb, var(--accent) 8%, transparent);
+    border-radius:16px;
+    padding:16px 18px;
+    margin:0 0 18px;
+    color:var(--muted);
+    font-size:.9rem;
+    line-height:1.7;
+  }
+  .install-panel b{ color:var(--accent); }
+  .install-title{
+    margin:0 0 8px;
+    color:var(--text);
+    font-weight:700;
+  }
+  .install-panel p{
+    margin:0 0 8px;
+  }
+  .install-panel p:last-child{
+    margin-bottom:0;
+  }
   [hidden]{ display:none !important; }
   @media (max-width:360px){
     body{ padding-inline:14px; }
@@ -202,6 +224,13 @@
       กรุณาลองใหม่อีกครั้ง
     </p>
 
+    <div class="install-panel" id="install-panel" hidden>
+      <p class="install-title">เพิ่มไอคอนกรุเอกสาร</p>
+      <p><b>Safari บน Mac:</b> ใช้เมนู <b>File</b> → <b>Add to Dock</b> หากมี หรือกดปุ่มแชร์แล้วเลือก <b>Add to Dock</b></p>
+      <p><b>iPhone / iPad:</b> กดปุ่มแชร์ แล้วเลือก <b>Add to Home Screen</b></p>
+      <p><b>Android Chrome:</b> กดเมนูจุดสามจุด แล้วเลือก <b>Add to Home screen</b> หรือ <b>Install app</b></p>
+    </div>
+
     <button class="btn" id="enter-button" type="button">เปิดระบบกรุเอกสาร</button>
     <button class="btn btn-secondary" id="retry-button" type="button" hidden>ลองอีกครั้ง</button>
   </main>
@@ -214,8 +243,11 @@
     var loadingText = document.getElementById('loading-text');
     var statusText = document.getElementById('status-text');
     var errorText = document.getElementById('error-text');
+    var installPanel = document.getElementById('install-panel');
+    var isInstallMode = new URLSearchParams(window.location.search).get('install') === '1';
 
     function showLoading() {
+      installPanel.hidden = true;
       loadingText.hidden = false;
       statusText.hidden = false;
       errorText.hidden = true;
@@ -227,7 +259,17 @@
       loadingText.hidden = true;
       statusText.hidden = true;
       errorText.hidden = false;
+      installPanel.hidden = true;
       retryButton.hidden = false;
+      enterButton.disabled = false;
+    }
+
+    function showInstallMode() {
+      loadingText.hidden = true;
+      statusText.hidden = true;
+      errorText.hidden = true;
+      retryButton.hidden = true;
+      installPanel.hidden = false;
       enterButton.disabled = false;
     }
 
@@ -262,7 +304,11 @@
       redirectToGas();
     });
 
-    redirectTimer = setTimeout(redirectToGas, 500);
+    if (isInstallMode) {
+      showInstallMode();
+    } else {
+      redirectTimer = setTimeout(redirectToGas, 500);
+    }
   </script>
 </body>
 </html>
